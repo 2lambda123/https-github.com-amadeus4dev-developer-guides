@@ -81,7 +81,23 @@ for doc in tqdm(all_docs):
         })
 
 batch_size = 100
-s = requests.Session()
+try:
+    s = requests.Session()
+    for i in tqdm(range(0, len(documents), batch_size)):
+        i_end = min(len(documents), i+batch_size)
+        res = s.post(f'{endpoint_url}/upsert',headers=headers,json={'documents': documents[i:i_end]})
+        res.raise_for_status()
+        logging.info(res.status_code)
+except requests.exceptions.RequestException as e:
+    logging.error(f'Failed to send chunks to the endpoint: {e}')
+
+# Add comprehensive error handling for HTTP requests and API responses
+retries = Retry(
+    total=5,
+    backoff_factor=0.1,
+    status_forcelist=[500, 502, 503, 504]
+)
+s.mount('http://', HTTPAdapter(max_retries=retries))
 
 # we setup a retry strategy to retry on 5xx errors
 retries = Retry(
